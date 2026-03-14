@@ -127,11 +127,23 @@ function extractBody(rawEmail) {
     body = extractSinglePartBody(rawEmail);
   }
 
-  // Buang tag HTML
+  // Buang style & script dulu
   body = body.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
   body = body.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+
+  // Ganti <a href="URL">teks</a> → "teks (URL)" agar link tetap terbaca
+  body = body.replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, text) => {
+    const cleanText = text.replace(/<[^>]+>/g, '').trim();
+    // Hanya tampilkan URL kalau bukan tracking pixel atau gambar
+    if (href.startsWith('http') && cleanText.length > 0) {
+      return `${cleanText} → ${href}`;
+    }
+    return cleanText;
+  });
+
+  // Ganti tag lain dengan spasi
   body = body.replace(/<[^>]+>/g, ' ');
-  body = body.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  body = body.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
   body = body.replace(/\s+/g, ' ').trim();
 
   return body.slice(0, 5000);
