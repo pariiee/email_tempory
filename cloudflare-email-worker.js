@@ -191,8 +191,12 @@ function extractMultipartBody(rawEmail, boundary) {
     }
   }
 
-  // Utamakan plain text, fallback ke HTML
-  return plainText || htmlText;
+  // Kalau ada HTML, selalu proses HTML (agar link <a href> bisa di-extract)
+  // Plain text dari email sering tidak menyertakan URL lengkap
+  if (htmlText) {
+    return htmlText;
+  }
+  return plainText;
 }
 
 function extractSinglePartBody(rawEmail) {
