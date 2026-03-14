@@ -1120,20 +1120,29 @@ function linkifyText(text) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    // Pola 1: "Teks label → https://url" → jadikan label sebagai link
-    let result = escaped.replace(/([^\n→]+?)\s*→\s*(https?:\/\/[^\s]+)/g, (match, label, url) => {
-        const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
-        const cleanLabel = label.trim();
-        if (cleanLabel.length > 0) {
-            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-pink-600 font-medium underline underline-offset-2 hover:text-pink-800">${cleanLabel}</a>`;
-        }
-        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-pink-600 underline underline-offset-2 hover:text-pink-800 break-all">${cleanUrl}</a>`;
-    });
+    const linkClass = 'text-pink-600 font-medium underline underline-offset-2 hover:text-pink-800';
 
-    // Pola 2: URL biasa yang masih tersisa (tidak punya label)
+    // Pola 1: "Label → https://url"
+    // Pakai batas kalimat (: . ; ! ? atau awal baris) agar label yang diambil
+    // hanya teks tepat sebelum tanda panah, bukan seluruh kalimat.
+    // Contoh: "klik link ini: Login ke Alight Creative → https://..."
+    //   prefix = ": "  |  label = "Login ke Alight Creative"  |  url = "https://..."
+    let result = escaped.replace(
+        /((?:^|[:\n.;!?])\s*)([^:\n.;!?→]+?)\s*→\s*(https?:\/\/[^\s]+)/gm,
+        (match, prefix, label, url) => {
+            const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+            const cleanLabel = label.trim();
+            if (cleanLabel.length > 0) {
+                return `${prefix}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="${linkClass}">${cleanLabel}</a>`;
+            }
+            return match;
+        }
+    );
+
+    // Pola 2: URL biasa yang masih tersisa (tidak memiliki label →)
     result = result.replace(/(?<!href=")(https?:\/\/[^\s<"]+)/g, (url) => {
         const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
-        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-pink-600 underline underline-offset-2 hover:text-pink-800 break-all">${cleanUrl}</a>`;
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="${linkClass} break-all">${cleanUrl}</a>`;
     });
 
     return result;
