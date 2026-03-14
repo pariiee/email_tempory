@@ -1095,7 +1095,7 @@ function displayEmailModal(email) {
                 <div>
                     <h4 class="text-xs font-bold uppercase tracking-widest mb-2" style="color:#be185d;"><i class="fas fa-align-left mr-1"></i>Text Content</h4>
                     <div class="rounded-xl p-4" style="background:#fdf2f8;border:1.5px solid #fbcfe8;">
-                        <pre class="whitespace-pre-wrap text-sm text-gray-700 font-mono">${email.body_text}</pre>
+                        <div class="whitespace-pre-wrap text-sm text-gray-700 break-words leading-relaxed">${linkifyText(email.body_text)}</div>
                     </div>
                 </div>
             ` : ''}
@@ -1110,6 +1110,33 @@ function displayEmailModal(email) {
     `;
     
     document.getElementById('emailModal').classList.remove('hidden');
+}
+
+// Ubah URL teks biasa menjadi link yang bisa diklik
+function linkifyText(text) {
+    // Escape HTML dulu biar aman
+    const escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Pola 1: "Teks label → https://url" → jadikan label sebagai link
+    let result = escaped.replace(/([^\n→]+?)\s*→\s*(https?:\/\/[^\s]+)/g, (match, label, url) => {
+        const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+        const cleanLabel = label.trim();
+        if (cleanLabel.length > 0) {
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-pink-600 font-medium underline underline-offset-2 hover:text-pink-800">${cleanLabel}</a>`;
+        }
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-pink-600 underline underline-offset-2 hover:text-pink-800 break-all">${cleanUrl}</a>`;
+    });
+
+    // Pola 2: URL biasa yang masih tersisa (tidak punya label)
+    result = result.replace(/(?<!href=")(https?:\/\/[^\s<"]+)/g, (url) => {
+        const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-pink-600 underline underline-offset-2 hover:text-pink-800 break-all">${cleanUrl}</a>`;
+    });
+
+    return result;
 }
 
 // Close email modal
