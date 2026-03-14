@@ -1123,12 +1123,10 @@ function linkifyText(text) {
     const linkClass = 'text-pink-600 font-medium underline underline-offset-2 hover:text-pink-800';
 
     // Pola 1: "Label → https://url"
-    // Pakai batas kalimat (: . ; ! ? atau awal baris) agar label yang diambil
-    // hanya teks tepat sebelum tanda panah, bukan seluruh kalimat.
-    // Contoh: "klik link ini: Login ke Alight Creative → https://..."
-    //   prefix = ": "  |  label = "Login ke Alight Creative"  |  url = "https://..."
+    // Ambil hanya teks setelah batas kalimat (:, ., ;, !, ?, newline) sebagai label
+    // agar tidak menangkap seluruh paragraf.
     let result = escaped.replace(
-        /((?:^|[:\n.;!?])\s*)([^:\n.;!?→]+?)\s*→\s*(https?:\/\/[^\s]+)/gm,
+        /((?:^|[:\n.;!?])\s*)([^:\n.;!?→]+?)\s*→\s*(https?:\/\/\S+)/gm,
         (match, prefix, label, url) => {
             const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
             const cleanLabel = label.trim();
@@ -1140,9 +1138,16 @@ function linkifyText(text) {
     );
 
     // Pola 2: URL biasa yang masih tersisa (tidak memiliki label →)
-    result = result.replace(/(?<!href=")(https?:\/\/[^\s<"]+)/g, (url) => {
-        const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
-        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="${linkClass} break-all">${cleanUrl}</a>`;
+    // Proses PER SEGMEN: lewati HTML tag yang sudah ada, hanya proses teks biasa.
+    // Ini mencegah URL di dalam href="..." di-replace lagi (double-wrap).
+    result = result.replace(/(<[^>]*>)|([^<]+)/g, (match, htmlTag, textNode) => {
+        if (htmlTag) return htmlTag; // biarkan tag HTML yang sudah ada
+        if (!textNode) return match;
+        // Hanya linkify teks biasa
+        return textNode.replace(/(https?:\/\/[^\s"<]+)/g, (url) => {
+            const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="${linkClass} break-all">${cleanUrl}</a>`;
+        });
     });
 
     return result;
