@@ -1,0 +1,1032 @@
+openapi: 3.0.3
+info:
+  title: REVA Mail API
+  description: |
+    API REST Lengkap untuk REVA Mail - Layanan Email
+    
+    ## Fitur
+    - Buat alamat email
+    - Terima dan kelola email
+    - Pemeriksaan email real-time
+    - Simulasi email untuk pengujian
+    - Pemrosesan email massal
+    
+    ## Otentikasi
+    API ini menggunakan proteksi CSRF. Sertakan header `X-CSRF-TOKEN` dalam permintaan Anda.
+    
+    ## Batas Rate
+    - 60 permintaan per menit per IP
+    - 10 pembuatan email per jam
+    - 20 simulasi per jam
+    
+  version: 1.0.0
+  contact:
+    name: REVA Mail API Support
+    url: https://revacantik.my.id
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://revacantik.my.id/api/v1
+    description: Server produksi
+  - url: http://127.0.0.1:8000/api/v1
+    description: Server pengembangan
+
+paths:
+  /temp-emails/generate:
+    post:
+      summary: Buat email sementara
+      description: |
+        Membuat alamat email sementara baru dengan opsi yang dapat disesuaikan:
+        - Pembuatan otomatis dengan username acak
+        - Username khusus dengan pengecekan ketersediaan
+        - Periode kedaluwarsa yang fleksibel (1 bulan, 6 bulan, 1 tahun)
+      tags:
+        - Manajemen Email
+      security:
+        - csrfAuth: []
+      requestBody:
+        description: Opsi pembuatan email
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                generation_type:
+                  type: string
+                  enum: [auto, custom]
+                  default: auto
+                  description: Jenis pembuatan email
+                custom_username:
+                  type: string
+                  pattern: '^[a-zA-Z0-9._-]{3,20}$'
+                  description: Username khusus (diperlukan jika generation_type adalah custom)
+                expires_in:
+                  type: string
+                  enum: [1_month, 6_months, 1_year]
+                  default: 1_month
+                  description: Periode kedaluwarsa email
+            examples:
+              auto_generation:
+                summary: Pembuatan otomatis (acak)
+                value:
+                  generation_type: auto
+                  expires_in: 1_month
+              custom_generation:
+                summary: Username khusus
+                value:
+                  generation_type: custom
+                  custom_username: myemail123
+                  expires_in: 6_months
+      responses:
+        '200':
+          description: Email berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailGenerateResponse'
+              examples:
+                auto_success:
+                  summary: Pembuatan otomatis berhasil
+                  value:
+                    success: true
+                    data:
+                      id: 1
+                      email_address: "abc123@revacantik.my.id"
+                      domain: "revacantik.my.id"
+                      expires_at: "2026-04-14T08:30:45Z"
+                      expires_in_days: 31
+                      created_at: "2026-03-14T08:30:45Z"
+                      is_active: true
+                      generation_type: "auto"
+                custom_success:
+                  summary: Custom generation success
+                  value:
+                    success: true
+                    data:
+                      id: 2
+                      email_address: "myemail123@revacantik.my.id"
+                      domain: "revacantik.my.id"
+                      expires_at: "2026-09-14T08:30:45Z"
+                      expires_in_days: 183
+                      created_at: "2026-03-14T08:30:45Z"
+                      is_active: true
+                      generation_type: "custom"
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                username_taken:
+                  summary: Username already taken
+                  value:
+                    success: false
+                    message: "Username already taken. Please choose a different username."
+                    errors:
+                      custom_username: ["This username is already taken"]
+                invalid_username:
+                  summary: Invalid username format
+                  value:
+                    success: false
+                    message: "Invalid input provided"
+                    errors:
+                      custom_username: ["Username must be between 3-20 characters and contain only letters, numbers, dots, hyphens, and underscores"]
+        '419':
+          $ref: '#/components/responses/CSRFError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /temp-emails/check-availability:
+    post:
+      summary: Check username availability
+      description: |
+        Check if a custom username is available for email generation.
+        Useful for real-time validation in forms.
+      tags:
+        - Email Management
+      security:
+        - csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+              properties:
+                username:
+                  type: string
+                  pattern: '^[a-zA-Z0-9._-]{3,20}$'
+                  description: Username to check availability for
+              example:
+                username: myemail123
+      responses:
+        '200':
+          description: Availability check successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  available:
+                    type: boolean
+                    description: Whether the username is available
+                  username:
+                    type: string
+                    description: The checked username
+                  email_address:
+                    type: string
+                    description: The full email address that would be created
+              examples:
+                available:
+                  summary: Username is available
+                  value:
+                    success: true
+                    available: true
+                    username: myemail123
+                    email_address: myemail123@revacantik.my.id
+                taken:
+                  summary: Username is taken
+                  value:
+                    success: true
+                    available: false
+                    username: myemail123
+                    email_address: myemail123@revacantik.my.id
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '419':
+          $ref: '#/components/responses/CSRFError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /temp-emails/{emailId}:
+    delete:
+      summary: Delete temporary email
+      description: Permanently deletes a temporary email and all its received messages
+      tags:
+        - Email Management
+      security:
+        - csrfAuth: []
+      parameters:
+        - name: emailId
+          in: path
+          required: true
+          description: The ID of the temporary email
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Email deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: "Temporary email deleted successfully"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '419':
+          $ref: '#/components/responses/CSRFError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /temp-emails/{emailId}/extend:
+    put:
+      summary: Extend email expiration
+      description: Extends the expiration time of a temporary email
+      tags:
+        - Email Management
+      security:
+        - csrfAuth: []
+      parameters:
+        - name: emailId
+          in: path
+          required: true
+          description: The ID of the temporary email
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - extension_period
+              properties:
+                extension_period:
+                  type: string
+                  enum: ["1_month", "6_months", "1_year"]
+                  description: Extension period option
+              example:
+                extension_period: "1_month"
+      responses:
+        '200':
+          description: Email expiration extended successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtendResponse'
+              example:
+                success: true
+                message: "Email expiration extended by 1 month"
+                data:
+                  new_expires_at: "2026-05-14T08:30:45.000000Z"
+                  extended_by: "1 month"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '419':
+          $ref: '#/components/responses/CSRFError'
+
+  /temp-emails/{emailId}/inbox:
+    get:
+      summary: Get inbox messages
+      description: Retrieves all emails received for the specified temporary email address
+      tags:
+        - Inbox Operations
+      parameters:
+        - name: emailId
+          in: path
+          required: true
+          description: The ID of the temporary email
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Inbox retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /temp-emails/{emailId}/email/{messageId}:
+    get:
+      summary: Get specific email
+      description: Retrieves details of a specific email message and marks it as read
+      tags:
+        - Inbox Operations
+      parameters:
+        - name: emailId
+          in: path
+          required: true
+          description: The ID of the temporary email
+          schema:
+            type: integer
+            example: 1
+        - name: messageId
+          in: path
+          required: true
+          description: The ID of the email message
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Email retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /temp-emails/{emailId}/check-new:
+    get:
+      summary: Check for new emails
+      description: Checks for new unread emails. Returns count and latest messages. Perfect for polling.
+      tags:
+        - Inbox Operations
+      parameters:
+        - name: emailId
+          in: path
+          required: true
+          description: The ID of the temporary email
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: New email check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckNewResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /temp-emails/{emailId}/stats:
+    get:
+      summary: Get email statistics
+      description: Returns statistics and details about the temporary email including remaining time
+      tags:
+        - Inbox Operations
+      parameters:
+        - name: emailId
+          in: path
+          required: true
+          description: The ID of the temporary email
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /simulate/email:
+    post:
+      summary: Simulate incoming email
+      description: Simulates receiving an email for testing purposes. Perfect for development and demo scenarios.
+      tags:
+        - Testing & Simulation
+      security:
+        - csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulateEmailRequest'
+      responses:
+        '200':
+          description: Email simulated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '419':
+          $ref: '#/components/responses/CSRFError'
+
+  /receive/email:
+    post:
+      summary: Receive email (Server Integration)
+      description: Endpoint for email server integration. Used by mail servers to deliver emails to temporary addresses.
+      tags:
+        - Server Integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveEmailRequest'
+      responses:
+        '200':
+          description: Email received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiveResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /receive/bulk-emails:
+    post:
+      summary: Bulk receive emails
+      description: Process multiple emails in a single request. Useful for bulk email processing.
+      tags:
+        - Server Integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - emails
+              properties:
+                emails:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ReceiveEmailRequest'
+                  minItems: 1
+                  maxItems: 50
+              example:
+                emails:
+                  - to_email: "abc123@revacantik.my.id"
+                    from_email: "sender1@example.com"
+                    sender_name: "Sender 1"
+                    subject: "Email 1"
+                    body: "Content 1"
+                  - to_email: "xyz789@revacantik.my.id"
+                    from_email: "sender2@example.com"
+                    sender_name: "Sender 2"
+                    subject: "Email 2"
+                    body: "Content 2"
+      responses:
+        '200':
+          description: Bulk processing completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReceiveResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    csrfAuth:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: CSRF token for Laravel applications
+
+  schemas:
+    TempEmail:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the temporary email
+          example: 1
+        email_address:
+          type: string
+          format: email
+          description: The temporary email address
+          example: "abc123@revacantik.my.id"
+        domain:
+          type: string
+          description: Email domain
+          example: "revacantik.my.id"
+        expires_at:
+          type: string
+          format: date-time
+          description: Email expiration timestamp (ISO 8601)
+          example: "2026-04-14T08:30:45Z"
+        expires_in_days:
+          type: integer
+          description: Number of days until expiration
+          example: 31
+        created_at:
+          type: string
+          format: date-time
+          description: Email creation timestamp (ISO 8601)
+          example: "2026-03-14T08:30:45Z"
+        is_active:
+          type: boolean
+          description: Whether the email is active and can receive messages
+          example: true
+        generation_type:
+          type: string
+          enum: [auto, custom]
+          description: Type of generation used
+          example: "custom"
+          type: boolean
+          description: Whether the email is still active
+          example: true
+        inbox_count:
+          type: integer
+          description: Number of emails in the inbox
+          example: 0
+
+    ReceivedEmail:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the received email
+          example: 1
+        from_email:
+          type: string
+          format: email
+          description: Sender's email address
+          example: "noreply@example.com"
+        sender_name:
+          type: string
+          description: Sender's display name
+          example: "Example Service"
+        subject:
+          type: string
+          description: Email subject
+          example: "Welcome to our service!"
+        body:
+          type: string
+          description: Email body content
+          example: "Thank you for signing up..."
+        verification_code:
+          type: string
+          nullable: true
+          description: Verification code if present
+          example: "123456"
+        link:
+          type: string
+          format: uri
+          nullable: true
+          description: Verification or action link if present
+          example: "https://example.com/verify?token=abc123"
+        received_at:
+          type: string
+          format: date-time
+          description: Email received timestamp (ISO 8601)
+          example: "2026-03-14T08:35:20.000000Z"
+        is_read:
+          type: boolean
+          description: Whether the email has been read
+          example: false
+
+    EmailGenerateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/TempEmail'
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid input provided"
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Field-specific validation errors
+          example:
+            custom_username: ["This username is already taken"]
+
+    InboxResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivedEmail'
+
+    EmailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/ReceivedEmail'
+
+    CheckNewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            new_emails_count:
+              type: integer
+              example: 2
+            total_emails:
+              type: integer
+              example: 5
+            has_new:
+              type: boolean
+              example: true
+            latest_emails:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 5
+                  subject:
+                    type: string
+                    example: "New Message"
+                  from_email:
+                    type: string
+                    example: "test@example.com"
+                  received_at:
+                    type: string
+                    format: date-time
+                    example: "2026-03-14T09:00:00.000000Z"
+
+    StatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            total_emails:
+              type: integer
+              example: 3
+            unread_emails:
+              type: integer
+              example: 1
+            read_emails:
+              type: integer
+              example: 2
+            expires_at:
+              type: string
+              format: date-time
+              example: "2026-04-14T08:30:45.000000Z"
+            time_remaining:
+              type: object
+              properties:
+                days:
+                  type: integer
+                  example: 31
+                hours:
+                  type: integer
+                  example: 5
+                minutes:
+                  type: integer
+                  example: 45
+            is_active:
+              type: boolean
+              example: true
+
+    ExtendResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Email expiration extended by 1 month"
+        data:
+          type: object
+          properties:
+            new_expires_at:
+              type: string
+              format: date-time
+              example: "2026-05-14T08:30:45.000000Z"
+            extended_by:
+              type: string
+              example: "1 month"
+
+    SimulateEmailRequest:
+      type: object
+      required:
+        - temp_email_id
+        - from_email
+        - sender_name
+        - subject
+        - body
+      properties:
+        temp_email_id:
+          type: integer
+          description: ID of the temporary email to send to
+          example: 1
+        from_email:
+          type: string
+          format: email
+          description: Sender's email address
+          example: "test@example.com"
+        sender_name:
+          type: string
+          description: Sender's display name
+          example: "Test Sender"
+        subject:
+          type: string
+          description: Email subject
+          example: "Test Email"
+        body:
+          type: string
+          description: Email body content
+          example: "This is a test message"
+        verification_code:
+          type: string
+          nullable: true
+          description: Optional verification code
+          example: "123456"
+        link:
+          type: string
+          format: uri
+          nullable: true
+          description: Optional verification or action link
+          example: "https://example.com/verify"
+
+    SimulateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Email simulated successfully"
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            from_email:
+              type: string
+              example: "test@example.com"
+            subject:
+              type: string
+              example: "Test Email"
+            received_at:
+              type: string
+              format: date-time
+              example: "2026-03-14T08:35:20.000000Z"
+
+    ReceiveEmailRequest:
+      type: object
+      required:
+        - to_email
+        - from_email
+        - sender_name
+        - subject
+        - body
+      properties:
+        to_email:
+          type: string
+          format: email
+          description: Destination temporary email address
+          example: "abc123@revacantik.my.id"
+        from_email:
+          type: string
+          format: email
+          description: Sender's email address
+          example: "sender@example.com"
+        sender_name:
+          type: string
+          description: Sender's display name
+          example: "Sender Name"
+        subject:
+          type: string
+          description: Email subject
+          example: "Email Subject"
+        body:
+          type: string
+          description: Email body content
+          example: "Email body content"
+        verification_code:
+          type: string
+          nullable: true
+          description: Optional verification code
+          example: "123456"
+        link:
+          type: string
+          format: uri
+          nullable: true
+          description: Optional verification or action link
+          example: "https://example.com/link"
+
+    ReceiveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Email received successfully"
+        data:
+          type: object
+          properties:
+            message_id:
+              type: integer
+              example: 1
+            temp_email_id:
+              type: integer
+              example: 1
+            received_at:
+              type: string
+              format: date-time
+              example: "2026-03-14T08:35:20.000000Z"
+
+    BulkReceiveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Processed 2 emails"
+        data:
+          type: object
+          properties:
+            processed:
+              type: integer
+              example: 2
+            successful:
+              type: integer
+              example: 2
+            failed:
+              type: integer
+              example: 0
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  index:
+                    type: integer
+                    example: 0
+                  success:
+                    type: boolean
+                    example: true
+                  message_id:
+                    type: integer
+                    nullable: true
+                    example: 1
+                  error:
+                    type: string
+                    nullable: true
+                    example: null
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error description"
+        errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            field_name: ["Validation error message"]
+
+  responses:
+    ValidationError:
+      description: Validation error - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            username_taken:
+              summary: Username already taken
+              value:
+                success: false
+                message: "Username already taken. Please choose a different username."
+                errors:
+                  custom_username: ["This username is already taken"]
+            invalid_format:
+              summary: Invalid username format
+              value:
+                success: false
+                message: "Invalid input provided"
+                errors:
+                  custom_username: ["Username must be between 3-20 characters and contain only letters, numbers, dots, hyphens, and underscores"]
+            general_validation:
+              summary: General validation error
+              value:
+                success: false
+                message: "Validation failed"
+                errors:
+                  temp_email_id: ["The temp email id field is required."]
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Temporary email not found or expired"
+
+    CSRFError:
+      description: CSRF token mismatch
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "CSRF token mismatch"
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Too Many Attempts"
+      headers:
+        X-RateLimit-Limit:
+          description: Request limit per minute
+          schema:
+            type: integer
+            example: 60
+        X-RateLimit-Remaining:
+          description: Remaining requests in current window
+          schema:
+            type: integer
+            example: 0
+        X-RateLimit-Reset:
+          description: Unix timestamp when rate limit resets
+          schema:
+            type: integer
+            example: 1640995200
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Internal server error"
+
+tags:
+  - name: Email Management
+    description: Operations for creating, deleting, and managing temporary emails
+  - name: Inbox Operations
+    description: Operations for retrieving and managing received emails
+  - name: Testing & Simulation
+    description: Endpoints for testing and simulating email functionality
+  - name: Server Integration
+    description: Endpoints for email server integration and bulk processing

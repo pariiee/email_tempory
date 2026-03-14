@@ -1,0 +1,499 @@
+{
+	"info": {
+		"_postman_id": "revamailapi-collection",
+		"name": "REVA Mail API Collection",
+		"description": "Complete collection of REVA Mail API endpoints for testing and integration.\n\n## Setup Instructions:\n1. Import this collection into Postman\n2. Set up environment variables (see Variables tab)\n3. Run the \"Generate Email\" request first to get an email\n4. Use the email ID in subsequent requests\n\n## Environment Variables:\n- `base_url`: API base URL (default: http://127.0.0.1:8000/api/v1)\n- `csrf_token`: CSRF token for authentication\n- `email_id`: Generated email ID (auto-populated)\n- `message_id`: Message ID for specific email requests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Email Management",
+			"description": "Operations for creating, deleting, and managing emails",
+			"item": [
+				{
+					"name": "Generate Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.data) {",
+									"        pm.environment.set('email_id', response.data.id);",
+									"        pm.environment.set('email_address', response.data.email_address);",
+									"        console.log('Generated email:', response.data.email_address);",
+									"        console.log('Email ID saved to environment:', response.data.id);",
+									"    }",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success property', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('success');",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Response contains email data', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('email_address');",
+									"    pm.expect(jsonData.data).to.have.property('id');",
+									"    pm.expect(jsonData.data).to.have.property('expires_at');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrf_token}}",
+								"description": "CSRF token for Laravel protection"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/temp-emails/generate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"generate"
+							]
+						},
+						"description": "Generates a new temporary email address with default 1 month expiration"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Temporary Email",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrf_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/temp-emails/{{email_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"{{email_id}}"
+							]
+						},
+						"description": "Permanently deletes a temporary email and all its received messages"
+					},
+					"response": []
+				},
+				{
+					"name": "Extend Email Expiration",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrf_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"extension_period\": \"1_month\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/temp-emails/{{email_id}}/extend",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"{{email_id}}",
+								"extend"
+							]
+						},
+						"description": "Extends the expiration time of a temporary email. Options: 1_month, 6_months, 1_year"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Inbox Operations",
+			"description": "Operations for retrieving and managing received emails",
+			"item": [
+				{
+					"name": "Get Inbox Messages",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.data && response.data.length > 0) {",
+									"        pm.environment.set('message_id', response.data[0].id);",
+									"        console.log('First message ID saved:', response.data[0].id);",
+									"        console.log('Total emails in inbox:', response.data.length);",
+									"    }",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is successful', function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/temp-emails/{{email_id}}/inbox",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"{{email_id}}",
+								"inbox"
+							]
+						},
+						"description": "Retrieves all emails received for the specified temporary email address"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Specific Email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/temp-emails/{{email_id}}/email/{{message_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"{{email_id}}",
+								"email",
+								"{{message_id}}"
+							]
+						},
+						"description": "Retrieves details of a specific email message and marks it as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Check New Emails",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/temp-emails/{{email_id}}/check-new",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"{{email_id}}",
+								"check-new"
+							]
+						},
+						"description": "Checks for new unread emails. Perfect for polling applications."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Email Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/temp-emails/{{email_id}}/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"temp-emails",
+								"{{email_id}}",
+								"stats"
+							]
+						},
+						"description": "Returns statistics and details about the temporary email including remaining time"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Testing & Simulation",
+			"description": "Endpoints for testing and simulating email functionality",
+			"item": [
+				{
+					"name": "Simulate Incoming Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrf_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"temp_email_id\": {{email_id}},\n    \"from_email\": \"test@example.com\",\n    \"sender_name\": \"Postman Test\",\n    \"subject\": \"Test Email from Postman\",\n    \"body\": \"This is a test email sent from Postman collection to verify the API functionality.\",\n    \"verification_code\": \"123456\",\n    \"link\": \"https://example.com/verify?token=abc123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/simulate/email",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"simulate",
+								"email"
+							]
+						},
+						"description": "Simulates receiving an email for testing purposes. Perfect for development and demo scenarios."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Server Integration",
+			"description": "Endpoints for email server integration and bulk processing",
+			"item": [
+				{
+					"name": "Receive Email (Server Integration)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"to_email\": \"{{email_address}}\",\n    \"from_email\": \"server@example.com\",\n    \"sender_name\": \"Example Server\",\n    \"subject\": \"Server Integration Test\",\n    \"body\": \"This email was sent via server integration endpoint.\",\n    \"verification_code\": \"987654\",\n    \"link\": \"https://server.example.com/action\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/receive/email",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"receive",
+								"email"
+							]
+						},
+						"description": "Endpoint for email server integration. Used by mail servers to deliver emails to temporary addresses."
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Receive Emails",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emails\": [\n        {\n            \"to_email\": \"{{email_address}}\",\n            \"from_email\": \"bulk1@example.com\",\n            \"sender_name\": \"Bulk Sender 1\",\n            \"subject\": \"Bulk Email 1\",\n            \"body\": \"This is the first email in the bulk request.\"\n        },\n        {\n            \"to_email\": \"{{email_address}}\",\n            \"from_email\": \"bulk2@example.com\",\n            \"sender_name\": \"Bulk Sender 2\",\n            \"subject\": \"Bulk Email 2\",\n            \"body\": \"This is the second email in the bulk request.\",\n            \"verification_code\": \"456789\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/receive/bulk-emails",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"receive",
+								"bulk-emails"
+							]
+						},
+						"description": "Process multiple emails in a single request. Useful for bulk email processing."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-generate CSRF token if not set (for demo purposes)",
+					"if (!pm.environment.get('csrf_token')) {",
+					"    console.log('CSRF token not set. Please set it in your environment variables.');",
+					"    console.log('You can get it from the web interface meta tag or Laravel session.');",
+					"}",
+					"",
+					"// Log current environment variables for debugging",
+					"console.log('Current environment variables:');",
+					"console.log('- base_url:', pm.environment.get('base_url'));",
+					"console.log('- email_id:', pm.environment.get('email_id'));",
+					"console.log('- email_address:', pm.environment.get('email_address'));",
+					"console.log('- message_id:', pm.environment.get('message_id'));"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test for all requests",
+					"pm.test('Response time is less than 5000ms', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"pm.test('Response has JSON content type', function () {",
+					"    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000/api/v1",
+			"type": "string",
+			"description": "Base URL for the REVA Mail API"
+		},
+		{
+			"key": "csrf_token",
+			"value": "",
+			"type": "string",
+			"description": "CSRF token for authentication (get from web interface)"
+		},
+		{
+			"key": "email_id",
+			"value": "",
+			"type": "string",
+			"description": "Generated temporary email ID (auto-populated)"
+		},
+		{
+			"key": "email_address",
+			"value": "",
+			"type": "string",
+			"description": "Generated temporary email address (auto-populated)"
+		},
+		{
+			"key": "message_id",
+			"value": "",
+			"type": "string",
+			"description": "Message ID for specific email requests (auto-populated from inbox)"
+		}
+	]
+}
