@@ -1103,7 +1103,7 @@ function displayEmailModal(email) {
             ${!email.body_html && !email.body_text ? `
                 <div class="text-center py-12 text-gray-400">
                     <i class="fas fa-file-alt text-4xl mb-3 block" style="color:#f9a8d4;"></i>
-                    <p>No content available</p>
+                    <p>Konten tidak tersedia</p>
                 </div>
             ` : ''}
         </div>

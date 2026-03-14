@@ -45,9 +45,9 @@ export default {
         body: JSON.stringify({
           to_email: message.to,
           from_email: message.from,
-          sender_name: senderName,
+          from_name: senderName,
           subject: subject,
-          body: body || '(Isi email tidak dapat dibaca)',
+          body_text: body || '(Isi email tidak dapat dibaca)',
           verification_code: verificationCode || null,
           link: link || null,
         }),
