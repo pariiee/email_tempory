@@ -8,19 +8,25 @@
  */
 
 export default {
+  // Handler untuk browser (agar tidak error di preview)
+  async fetch(request, env, ctx) {
+    return new Response('REVA Mail Worker aktif ✅', { status: 200 });
+  },
+
   async email(message, env, ctx) {
     try {
       // Baca raw email
       const rawEmail = await streamToText(message.raw);
 
-      // Ambil subject dari header
-      const subject = message.headers.get('subject') || '(Tanpa Subjek)';
+      // Ambil subject — handle encoded header =?UTF-8?B?...?= atau =?UTF-8?Q?...?=
+      const rawSubject = message.headers.get('subject') || '';
+      const subject = decodeEmailHeader(rawSubject) || '(Tanpa Subjek)';
 
-      // Ambil nama pengirim dari header "From" (misal: "CapCut <noreply@capcut.com>")
-      const fromHeader = message.headers.get('from') || message.from;
-      const senderName = extractName(fromHeader);
+      // Ambil nama pengirim
+      const fromHeader = message.headers.get('from') || message.from || '';
+      const senderName = extractName(fromHeader) || message.from;
 
-      // Ambil body teks dari raw email
+      // Ambil body — support plain text, HTML, dan base64 multipart
       const body = extractBody(rawEmail);
 
       // Cari kode verifikasi (angka 4-8 digit)
@@ -41,17 +47,17 @@ export default {
           from_email: message.from,
           sender_name: senderName,
           subject: subject,
-          body: body,
+          body: body || '(Isi email tidak dapat dibaca)',
           verification_code: verificationCode || null,
           link: link || null,
         }),
       });
 
       const result = await response.json();
-      console.log('Email diterima:', result);
+      console.log('Email diterima:', JSON.stringify(result));
 
     } catch (error) {
-      console.error('Error memproses email:', error);
+      console.error('Error memproses email:', error.message);
     }
   },
 };
@@ -70,28 +76,138 @@ async function streamToText(stream) {
   return result;
 }
 
+// Decode encoded email header =?UTF-8?B?base64?= atau =?UTF-8?Q?quoted?=
+function decodeEmailHeader(header) {
+  if (!header) return '';
+  return header.replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (_, charset, encoding, text) => {
+    try {
+      if (encoding.toUpperCase() === 'B') {
+        // Base64 encoded
+        const binary = atob(text);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder(charset).decode(bytes);
+      } else {
+        // Quoted-printable
+        return text.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+      }
+    } catch {
+      return text;
+    }
+  });
+}
+
 function extractName(fromHeader) {
   // "CapCut <noreply@capcut.com>" → "CapCut"
   const match = fromHeader.match(/^"?([^"<]+)"?\s*</);
   if (match) return match[1].trim();
-  return fromHeader;
+  // Kalau tidak ada nama, ambil bagian sebelum @
+  const emailMatch = fromHeader.match(/([^@<\s]+)@/);
+  return emailMatch ? emailMatch[1] : fromHeader;
 }
 
 function extractBody(rawEmail) {
-  // Pisahkan header dan body (dipisah oleh baris kosong ganda)
+  // Cari Content-Type untuk tahu format email
+  const contentTypeMatch = rawEmail.match(/Content-Type:\s*([^\r\n;]+)/i);
+  const contentType = contentTypeMatch ? contentTypeMatch[1].trim().toLowerCase() : '';
+
+  let body = '';
+
+  if (contentType.includes('multipart')) {
+    // Ambil boundary
+    const boundaryMatch = rawEmail.match(/boundary="?([^"\r\n;]+)"?/i);
+    if (boundaryMatch) {
+      const boundary = boundaryMatch[1];
+      body = extractMultipartBody(rawEmail, boundary);
+    }
+  } else {
+    // Single part
+    body = extractSinglePartBody(rawEmail);
+  }
+
+  // Buang tag HTML
+  body = body.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  body = body.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+  body = body.replace(/<[^>]+>/g, ' ');
+  body = body.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  body = body.replace(/\s+/g, ' ').trim();
+
+  return body.slice(0, 5000);
+}
+
+function extractMultipartBody(rawEmail, boundary) {
+  const parts = rawEmail.split(new RegExp(`--${escapeRegex(boundary)}`, 'g'));
+  let plainText = '';
+  let htmlText = '';
+
+  for (const part of parts) {
+    if (!part || part.trim() === '--') continue;
+
+    const partContentTypeMatch = part.match(/Content-Type:\s*([^\r\n;]+)/i);
+    const partContentType = partContentTypeMatch ? partContentTypeMatch[1].trim().toLowerCase() : '';
+    const encodingMatch = part.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i);
+    const encoding = encodingMatch ? encodingMatch[1].trim().toLowerCase() : '';
+
+    // Ambil body bagian ini
+    const partBodyStart = part.indexOf('\r\n\r\n');
+    if (partBodyStart === -1) continue;
+    let partBody = part.slice(partBodyStart + 4).trim();
+
+    // Decode berdasarkan encoding
+    if (encoding === 'base64') {
+      try {
+        const cleaned = partBody.replace(/\s/g, '');
+        const binary = atob(cleaned);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        partBody = new TextDecoder('utf-8').decode(bytes);
+      } catch {
+        partBody = '';
+      }
+    } else if (encoding === 'quoted-printable') {
+      partBody = partBody.replace(/=\r\n/g, '').replace(/=([0-9A-F]{2})/gi, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+    }
+
+    if (partContentType.includes('text/plain')) {
+      plainText = partBody;
+    } else if (partContentType.includes('text/html')) {
+      htmlText = partBody;
+    }
+  }
+
+  // Utamakan plain text, fallback ke HTML
+  return plainText || htmlText;
+}
+
+function extractSinglePartBody(rawEmail) {
   const bodyStart = rawEmail.indexOf('\r\n\r\n');
-  if (bodyStart === -1) return rawEmail;
+  if (bodyStart === -1) return '';
   let body = rawEmail.slice(bodyStart + 4);
 
-  // Decode quoted-printable jika ada
-  body = body.replace(/=\r\n/g, '').replace(/=([0-9A-F]{2})/gi, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16))
-  );
+  const encodingMatch = rawEmail.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i);
+  const encoding = encodingMatch ? encodingMatch[1].trim().toLowerCase() : '';
 
-  // Buang tag HTML jika ada
-  body = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (encoding === 'base64') {
+    try {
+      const cleaned = body.replace(/\s/g, '');
+      const binary = atob(cleaned);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch {
+      return '';
+    }
+  } else if (encoding === 'quoted-printable') {
+    return body.replace(/=\r\n/g, '').replace(/=([0-9A-F]{2})/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    );
+  }
 
-  return body.slice(0, 5000); // Batasi 5000 karakter
+  return body;
 }
 
 function extractVerificationCode(body) {
@@ -104,4 +220,8 @@ function extractLink(body) {
   // Cari URL pertama di dalam body
   const match = body.match(/https?:\/\/[^\s"'<>]+/);
   return match ? match[0] : null;
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
