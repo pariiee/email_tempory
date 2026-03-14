@@ -179,9 +179,7 @@ function extractMultipartBody(rawEmail, boundary) {
         partBody = '';
       }
     } else if (encoding === 'quoted-printable') {
-      partBody = partBody.replace(/=\r\n/g, '').replace(/=([0-9A-F]{2})/gi, (_, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      );
+      partBody = decodeQuotedPrintable(partBody);
     }
 
     if (partContentType.includes('text/plain')) {
@@ -218,12 +216,28 @@ function extractSinglePartBody(rawEmail) {
       return '';
     }
   } else if (encoding === 'quoted-printable') {
-    return body.replace(/=\r\n/g, '').replace(/=([0-9A-F]{2})/gi, (_, hex) =>
-      String.fromCharCode(parseInt(hex, 16))
-    );
+    return decodeQuotedPrintable(body);
   }
 
   return body;
+}
+
+// Decode quoted-printable dengan benar:
+// 1. Handle soft line break =\r\n dan =\n
+// 2. Decode =XX berurutan sebagai UTF-8 (bukan Latin-1 satu per satu)
+function decodeQuotedPrintable(str) {
+  // Hapus soft line breaks (CRLF dan LF)
+  str = str.replace(/=\r?\n/g, '');
+  // Kelompokkan =XX berurutan → decode sebagai UTF-8 bytes
+  str = str.replace(/((?:=[0-9A-F]{2})+)/gi, (match) => {
+    try {
+      const bytes = match.match(/=[0-9A-F]{2}/gi).map(e => parseInt(e.slice(1), 16));
+      return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+    } catch {
+      return match;
+    }
+  });
+  return str;
 }
 
 function extractVerificationCode(body) {
