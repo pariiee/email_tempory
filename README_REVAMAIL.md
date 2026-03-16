@@ -12,6 +12,7 @@ Sebuah layanan email yang dibangun dengan Laravel 12, mirip dengan https://gener
 - ✅ **Privacy Protection** - Data dihapus otomatis setelah expired
 - ✅ **API Support** - REST API untuk integrasi dengan sistem lain
 - ✅ **Responsive Design** - Tampilan modern dan responsive
+- ✅ **Live Statistics** - Statistik real-time platform dengan update otomatis
 
 ## Cara Penggunaan
 
@@ -88,6 +89,50 @@ Content-Type: application/json
   "subject": "Test Email",
   "body_text": "Hello World",
   "body_html": "<p>Hello World</p>"
+}
+```
+
+#### Statistik Platform Live
+```bash
+GET /api/v1/stats
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "stats": [
+      {
+        "label": "Lagi Aktif",
+        "emoji": "🔥",
+        "value": 29,
+        "description": "Email yang sedang aktif dan belum expired"
+      },
+      {
+        "label": "Dibuat Hari Ini",
+        "emoji": "✨", 
+        "value": 7,
+        "description": "Email baru yang dibuat hari ini"
+      },
+      {
+        "label": "Masuk Hari Ini",
+        "emoji": "📬",
+        "value": 2,
+        "description": "Email yang diterima hari ini"
+      },
+      {
+        "label": "Total Sepanjang Masa",
+        "emoji": "🏆",
+        "value": 29,
+        "description": "Total email yang pernah dibuat"
+      }
+    ],
+    "updated_at": {
+      "time": "14.07.43",
+      "formatted": "Diperbarui jam 14.07.43"
+    }
+  }
 }
 ```
 

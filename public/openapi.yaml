@@ -486,6 +486,60 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /stats:
+    get:
+      summary: Get live platform statistics
+      description: |
+        Retrieves real-time platform statistics including:
+        - Active emails count
+        - Emails created today
+        - Emails received today
+        - Total emails ever created
+        
+        This endpoint provides live statistics that update in real-time and can be used
+        for dashboard displays with automatic refresh functionality.
+      tags:
+        - Statistics
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalStatsResponse'
+              examples:
+                live_stats:
+                  summary: Live platform statistics
+                  value:
+                    success: true
+                    data:
+                      stats:
+                        - label: "Lagi Aktif"
+                          emoji: "🔥"
+                          value: 29
+                          description: "Email yang sedang aktif dan belum expired"
+                        - label: "Dibuat Hari Ini"
+                          emoji: "✨"
+                          value: 7
+                          description: "Email baru yang dibuat hari ini"
+                        - label: "Masuk Hari Ini"
+                          emoji: "📬"
+                          value: 2
+                          description: "Email yang diterima hari ini"
+                        - label: "Total Sepanjang Masa"
+                          emoji: "🏆"
+                          value: 29
+                          description: "Total email yang pernah dibuat"
+                      updated_at:
+                        time: "14.07.43"
+                        formatted: "Diperbarui jam 14.07.43"
+                        full_datetime: "2026-03-16 14:07:43"
+                        iso: "2026-03-16T14:07:43.000Z"
+                      server_info:
+                        timezone: "UTC"
+                        date: "16 Mar 2026"
+                        day_name: "Sunday"
+
 components:
   securitySchemes:
     csrfAuth:
@@ -710,6 +764,62 @@ components:
             is_active:
               type: boolean
               example: true
+
+    GlobalStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            stats:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                    example: "Lagi Aktif"
+                  emoji:
+                    type: string
+                    example: "🔥"
+                  value:
+                    type: integer
+                    example: 29
+                  description:
+                    type: string
+                    example: "Email yang sedang aktif dan belum expired"
+            updated_at:
+              type: object
+              properties:
+                time:
+                  type: string
+                  example: "14.07.43"
+                formatted:
+                  type: string
+                  example: "Diperbarui jam 14.07.43"
+                full_datetime:
+                  type: string
+                  format: date-time
+                  example: "2026-03-16 14:07:43"
+                iso:
+                  type: string
+                  format: date-time
+                  example: "2026-03-16T14:07:43.000Z"
+            server_info:
+              type: object
+              properties:
+                timezone:
+                  type: string
+                  example: "UTC"
+                date:
+                  type: string
+                  example: "16 Mar 2026"
+                day_name:
+                  type: string
+                  example: "Sunday"
 
     ExtendResponse:
       type: object

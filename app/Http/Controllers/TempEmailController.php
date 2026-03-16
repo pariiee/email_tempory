@@ -307,38 +307,62 @@ class TempEmailController extends Controller
      */
     public function globalStats()
     {
-        $now = Carbon::now();
+        $timezone = config('app.timezone', 'Asia/Jakarta');
+        $now = Carbon::now($timezone);
 
+        // Hitung statistik real-time
         $activeEmails = TempEmail::where('is_active', true)
             ->where(function ($q) use ($now) {
                 $q->whereNull('expires_at')->orWhere('expires_at', '>', $now);
             })->count();
 
-        $expiringSoon = TempEmail::where('is_active', true)
-            ->whereBetween('expires_at', [$now, $now->copy()->addHours(24)])
-            ->count();
-
         $generatedToday = TempEmail::whereDate('created_at', $now->toDateString())->count();
-
         $totalGenerated = TempEmail::count();
-
-        $totalEmailsReceived = ReceivedEmail::count();
-
         $emailsReceivedToday = ReceivedEmail::whereDate('received_at', $now->toDateString())->count();
 
-        $unreadEmails = ReceivedEmail::where('is_read', false)->count();
+        // Format waktu update (jam.menit.detik)
+        $updatedTime = $now->format('H.i.s');
 
         return response()->json([
             'success' => true,
             'data' => [
-                'active_emails'         => $activeEmails,
-                'expiring_soon'         => $expiringSoon,
-                'generated_today'       => $generatedToday,
-                'total_generated'       => $totalGenerated,
-                'total_emails_received' => $totalEmailsReceived,
-                'emails_received_today' => $emailsReceivedToday,
-                'unread_emails'         => $unreadEmails,
-                'timestamp'             => $now->toISOString(),
+                'stats' => [
+                    [
+                        'label' => 'Lagi Aktif',
+                        'emoji' => '🔥',
+                        'value' => $activeEmails,
+                        'description' => 'Email yang sedang aktif dan belum expired'
+                    ],
+                    [
+                        'label' => 'Dibuat Hari Ini',
+                        'emoji' => '✨',
+                        'value' => $generatedToday,
+                        'description' => 'Email baru yang dibuat hari ini'
+                    ],
+                    [
+                        'label' => 'Masuk Hari Ini',
+                        'emoji' => '📬',
+                        'value' => $emailsReceivedToday,
+                        'description' => 'Email yang diterima hari ini'
+                    ],
+                    [
+                        'label' => 'Total Sepanjang Masa',
+                        'emoji' => '🏆',
+                        'value' => $totalGenerated,
+                        'description' => 'Total email yang pernah dibuat'
+                    ]
+                ],
+                'updated_at' => [
+                    'time' => $updatedTime,
+                    'formatted' => "Diperbarui jam $updatedTime",
+                    'full_datetime' => $now->format('Y-m-d H:i:s'),
+                    'iso' => $now->toISOString()
+                ],
+                'server_info' => [
+                    'timezone' => config('app.timezone', 'UTC'),
+                    'date' => $now->format('d M Y'),
+                    'day_name' => $now->format('l')
+                ]
             ]
         ]);
     }

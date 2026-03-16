@@ -40,7 +40,7 @@
     <!-- Quick Navigation -->
     <nav class="bg-white rounded-2xl shadow-md p-6 mb-8" style="border:1.5px solid #fce7f3;">
         <h2 class="text-sm font-bold uppercase tracking-widest mb-4" style="color:#be185d;">Navigasi Cepat</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
             <a href="#authentication" class="flex items-center p-3 rounded-xl hover:shadow-md transition-all" style="background:#fff7ed;">
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style="background:#fed7aa;"><i class="fas fa-key text-orange-600 text-sm"></i></div>
                 <span class="font-semibold text-gray-700 text-sm">Otentikasi</span>
@@ -52,6 +52,10 @@
             <a href="#inbox-operations" class="flex items-center p-3 rounded-xl hover:shadow-md transition-all" style="background:#f0fdf4;">
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style="background:#bbf7d0;"><i class="fas fa-inbox text-green-600 text-sm"></i></div>
                 <span class="font-semibold text-gray-700 text-sm">Operasi Inbox</span>
+            </a>
+            <a href="#statistics" class="flex items-center p-3 rounded-xl hover:shadow-md transition-all" style="background:#f0f9ff;">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style="background:#bae6fd;"><i class="fas fa-chart-bar text-blue-600 text-sm"></i></div>
+                <span class="font-semibold text-gray-700 text-sm">Statistik Live</span>
             </a>
             <a href="#testing-simulation" class="flex items-center p-3 rounded-xl hover:shadow-md transition-all" style="background:#fdf4ff;">
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style="background:#e9d5ff;"><i class="fas fa-flask text-purple-600 text-sm"></i></div>
@@ -464,6 +468,108 @@ messageId: integer (required)
                         <p><i class="fas fa-check text-green-500 mr-2"></i>Email counters</p>
                         <p><i class="fas fa-check text-green-500 mr-2"></i>Expiration warnings</p>
                         <p><i class="fas fa-check text-green-500 mr-2"></i>User notifications</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section id="statistics" class="bg-white rounded-2xl shadow-md p-6 mb-8" style="border:1.5px solid #fce7f3;">
+        <h2 class="text-xl font-bold mb-6" style="color:#831843;">
+            <i class="fas fa-chart-bar mr-3" style="color:#2563eb;"></i>Statistik Live Platform
+        </h2>
+
+        <!-- Live Statistics -->
+        <div class="pb-6 mb-6" style="border-bottom:1.5px solid #fce7f3;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold" style="color:#9d174d;">Statistik Real-Time</h3>
+                <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded">GET</span>
+            </div>
+            <div class="rounded-xl p-4 mb-4" style="background:#fdf2f8;border:1.5px solid #fbcfe8;">
+                <code class="text-gray-800 font-mono">/stats</code>
+            </div>
+            <p class="text-gray-700 mb-4">Mengambil statistik platform secara real-time termasuk jumlah email aktif, email dibuat hari ini, email masuk hari ini, dan total email sepanjang masa. Perfect untuk dashboard dengan auto-refresh.</p>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-widest mb-2" style="color:#be185d;">Fitur Statistik:</h4>
+                    <div class="space-y-2 text-sm text-gray-600">
+                        <p><i class="fas fa-fire text-red-500 mr-2"></i><strong>Lagi Aktif:</strong> Email yang sedang aktif dan belum expired</p>
+                        <p><i class="fas fa-sparkles text-yellow-500 mr-2"></i><strong>Dibuat Hari Ini:</strong> Email baru yang dibuat hari ini</p>
+                        <p><i class="fas fa-envelope text-blue-500 mr-2"></i><strong>Masuk Hari Ini:</strong> Email yang diterima hari ini</p>
+                        <p><i class="fas fa-trophy text-purple-500 mr-2"></i><strong>Total Sepanjang Masa:</strong> Total email yang pernah dibuat</p>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="text-xs font-bold uppercase tracking-widest mb-2" style="color:#be185d;">Header CSRF:</h4>
+                        <div class="bg-gray-800 text-yellow-400 p-3 rounded-lg text-xs font-mono">
+X-CSRF-TOKEN: {{ csrf_token() }}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-widest mb-2" style="color:#be185d;">Response Success:</h4>
+                    <div class="bg-gray-800 text-green-400 p-4 rounded-lg text-sm font-mono overflow-x-auto">
+{
+  "success": true,
+  "data": {
+    "stats": [
+      {
+        "label": "Lagi Aktif",
+        "emoji": "🔥",
+        "value": 29,
+        "description": "Email yang sedang aktif dan belum expired"
+      },
+      {
+        "label": "Dibuat Hari Ini",
+        "emoji": "✨",
+        "value": 7,
+        "description": "Email baru yang dibuat hari ini"
+      },
+      {
+        "label": "Masuk Hari Ini",
+        "emoji": "📬",
+        "value": 2,
+        "description": "Email yang diterima hari ini"
+      },
+      {
+        "label": "Total Sepanjang Masa",
+        "emoji": "🏆",
+        "value": 29,
+        "description": "Total email yang pernah dibuat"
+      }
+    ],
+    "updated_at": {
+      "time": "14.07.43",
+      "formatted": "Diperbarui jam 14.07.43",
+      "full_datetime": "2026-03-16 14:07:43",
+      "iso": "2026-03-16T14:07:43.000Z"
+    },
+    "server_info": {
+      "timezone": "UTC",
+      "date": "16 Mar 2026",
+      "day_name": "Sunday"
+    }
+  }
+}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 rounded-xl" style="background:#f0f9ff;border:1.5px solid #bae6fd;">
+                <h4 class="text-sm font-bold mb-3" style="color:#1e40af;">
+                    <i class="fas fa-lightbulb mr-2"></i>Kegunaan Statistik Live:
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                    <div class="space-y-1">
+                        <p><i class="fas fa-check text-blue-500 mr-2"></i>Dashboard real-time</p>
+                        <p><i class="fas fa-check text-blue-500 mr-2"></i>Monitoring platform</p>
+                        <p><i class="fas fa-check text-blue-500 mr-2"></i>Analytics integration</p>
+                    </div>
+                    <div class="space-y-1">
+                        <p><i class="fas fa-check text-blue-500 mr-2"></i>Auto-refresh support</p>
+                        <p><i class="fas fa-check text-blue-500 mr-2"></i>Mobile-friendly response</p>
+                        <p><i class="fas fa-check text-blue-500 mr-2"></i>Timezone aware</p>
                     </div>
                 </div>
             </div>
@@ -1008,6 +1114,7 @@ function createAPITester() {
                         <select id="endpointSelect" class="w-full rounded-xl px-3 py-2 text-sm text-gray-700 bg-white outline-none" style="border:1.5px solid #f9a8d4;">
                             <option value="generate">POST — Buat Email</option>
                             <option value="check-availability">POST — Periksa Username</option>
+                            <option value="stats">GET — Statistik Live</option>
                             <option value="simulate">POST — Simulasi Email</option>
                         </select>
                     </div>
@@ -1065,6 +1172,10 @@ function createAPITester() {
                     body = requestData || JSON.stringify({
                         username: 'myemail123'
                     });
+                } else if (endpoint === 'stats') {
+                    url = '/api/v1/stats';
+                    method = 'GET';
+                    body = null;
                 } else if (endpoint === 'simulate') {
                     url = '/api/v1/simulate/email';
                     method = 'POST';
@@ -1114,6 +1225,8 @@ function createAPITester() {
                 textarea.value = JSON.stringify({
                     username: 'myemail123'
                 }, null, 2);
+            } else if (e.target.value === 'stats') {
+                textarea.value = '// GET request - no body required\n// This endpoint returns live platform statistics';
             } else if (e.target.value === 'simulate') {
                 textarea.value = JSON.stringify({
                     temp_email_id: 1,

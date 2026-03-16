@@ -26,6 +26,7 @@ headers: {
 - 🔍 **Real-time Availability Checking** - Check username availability
 - 🔗 **Direct URL Access** - Share emails via direct URLs
 - 📱 **Mobile-friendly Sharing** - Native share API support
+- 📊 **Live Statistics** - Real-time platform stats with auto-refresh
 
 ## 📧 Email Management
 
@@ -172,7 +173,75 @@ Extends email lifetime (1_month, 6_months, 1_year).
 }
 ```
 
-## 📬 Inbox Operations
+## � Platform Statistics
+
+### Get Live Statistics
+**GET** `/stats`
+
+Retrieves real-time platform statistics including active emails, daily counts, and totals. Perfect for dashboard displays with automatic refresh.
+
+```javascript
+// Request
+fetch('/api/v1/stats', {
+    method: 'GET',
+    headers: {
+        'Accept': 'application/json'
+    }
+})
+
+// Response
+{
+    "success": true,
+    "data": {
+        "stats": [
+            {
+                "label": "Lagi Aktif",
+                "emoji": "🔥",
+                "value": 29,  
+                "description": "Email yang sedang aktif dan belum expired"
+            },
+            {
+                "label": "Dibuat Hari Ini",
+                "emoji": "✨",
+                "value": 7,
+                "description": "Email baru yang dibuat hari ini"
+            },
+            {
+                "label": "Masuk Hari Ini", 
+                "emoji": "📬",
+                "value": 2,
+                "description": "Email yang diterima hari ini"
+            },
+            {
+                "label": "Total Sepanjang Masa",
+                "emoji": "🏆", 
+                "value": 29,
+                "description": "Total email yang pernah dibuat"
+            }
+        ],
+        "updated_at": {
+            "time": "14.07.43",
+            "formatted": "Diperbarui jam 14.07.43",
+            "full_datetime": "2026-03-16 14:07:43",
+            "iso": "2026-03-16T14:07:43.000Z"
+        },
+        "server_info": {
+            "timezone": "UTC",
+            "date": "16 Mar 2026",
+            "day_name": "Sunday"
+        }
+    }
+}
+```
+
+**Features:**
+- ⚡ Real-time data updates
+- 🕐 Timestamp with precise update time 
+- 🌍 Timezone and date information
+- 📱 Mobile-friendly emoji indicators
+- 🔄 Perfect for auto-refresh dashboards
+
+## �📬 Inbox Operations
 
 ### Get Inbox
 **GET** `/temp-emails/{id}/inbox`
