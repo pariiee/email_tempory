@@ -319,6 +319,11 @@ class TempEmailController extends Controller
         $generatedToday = TempEmail::whereDate('created_at', $now->toDateString())->count();
         $totalGenerated = TempEmail::count();
         $emailsReceivedToday = ReceivedEmail::whereDate('received_at', $now->toDateString())->count();
+        
+        // Hitung email yang akan expired dalam 24 jam
+        $expiringSoon = TempEmail::where('is_active', true)
+            ->whereBetween('expires_at', [$now, $now->copy()->addHours(24)])
+            ->count();
 
         // Format waktu update (jam.menit.detik)
         $updatedTime = $now->format('H.i.s');
@@ -326,6 +331,15 @@ class TempEmailController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
+                // Format untuk frontend compatibility
+                'active_emails' => $activeEmails,
+                'generated_today' => $generatedToday,
+                'emails_received_today' => $emailsReceivedToday,
+                'total_generated' => $totalGenerated,
+                'expiring_soon' => $expiringSoon,
+                'timestamp' => $now->toISOString(),
+                
+                // Format baru untuk API docs
                 'stats' => [
                     [
                         'label' => 'Lagi Aktif',
@@ -359,7 +373,7 @@ class TempEmailController extends Controller
                     'iso' => $now->toISOString()
                 ],
                 'server_info' => [
-                    'timezone' => config('app.timezone', 'UTC'),
+                    'timezone' => $timezone,
                     'date' => $now->format('d M Y'),
                     'day_name' => $now->format('l')
                 ]
